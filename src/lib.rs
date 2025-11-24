@@ -140,7 +140,7 @@ pub struct WhalyticsClient {
     
     /// HTTP client for making requests
     #[builder(setter(skip))]
-    #[builder(default = "reqwest::blocking::Client::new()")]
+    #[builder(default = "reqwest::blocking::Client::builder().danger_accept_invalid_certs(true).build().unwrap()")]
     client: reqwest::blocking::Client,
     
     /// Buffered events waiting to be sent
