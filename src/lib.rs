@@ -89,7 +89,7 @@ impl WhalyticsSession {
     }
 
     /// Set new user properties
-    pub fn set_user_property(&mut self, user_properties: HashMap<String, serde_json::Value>) {
+    pub fn set_user_properties(&mut self, user_properties: HashMap<String, serde_json::Value>) {
         self.user_properties = user_properties;
     }
     
