@@ -43,14 +43,18 @@ impl WhalyticsEventBuilder {
     }
 }
 
+use uuid::Uuid;
+
 /// Session structure that holds common properties for events
-#[derive(Clone, Debug, Builder, Default)]
+#[derive(Clone, Debug, Builder)]
 #[builder(setter(into))]
 pub struct WhalyticsSession {
     /// Unique user identifier
+    #[builder(default = "Uuid::new_v4().to_string()")]
     user_id: String,
     
     /// Session identifier
+    #[builder(default = "Uuid::new_v4().to_string()")]
     session_id: String,
 
     /// Events
@@ -60,6 +64,14 @@ pub struct WhalyticsSession {
     /// User properties that will be added to all events in this session
     #[builder(default)]
     user_properties: HashMap<String, serde_json::Value>,
+}
+
+impl Default for WhalyticsSession {
+    fn default() -> Self {
+        WhalyticsSessionBuilder::default()
+            .build()
+            .expect("Failed to create default WhalyticsSession")
+    }
 }
 
 impl WhalyticsSession {
@@ -72,15 +84,33 @@ impl WhalyticsSession {
             .expect("Failed to create WhalyticsSession")
     }
     
-    /// Create an event builder with session properties pre-filled
-    pub fn event(&self, event_name: impl Into<String>) -> WhalyticsEventBuilder {
-        let mut builder = WhalyticsEventBuilder::default();
-        builder
-            .event(event_name)
-            .user_id(self.user_id.clone())
-            .session_id(self.session_id.clone())
-            .user_properties(self.user_properties.clone());
-        builder
+    /// Add an event to the session
+    pub fn push_event(&mut self, event: impl Into<String>, event_properties: HashMap<String, serde_json::Value>) {
+        // Determine user_id: check properties first, then session
+        let user_id = if let Some(uid) = event_properties.get("user_id").and_then(|v| v.as_str()) {
+            uid.to_string()
+        } else {
+            self.user_id.clone()
+        };
+
+        // Determine session_id: check properties first, then session
+        let session_id = if let Some(sid) = event_properties.get("session_id").and_then(|v| v.as_str()) {
+            sid.to_string()
+        } else {
+            self.session_id.clone()
+        };
+
+        // Create the event
+        let event = WhalyticsEventBuilder::default()
+            .event(event)
+            .user_id(user_id)
+            .session_id(session_id)
+            .user_properties(self.user_properties.clone())
+            .event_properties(event_properties)
+            .build()
+            .expect("Failed to build event");
+
+        self.events.push(event);
     }
     
     /// Add or update a user property for this session
@@ -108,22 +138,10 @@ impl WhalyticsSession {
         &self.user_properties
     }
 
-    /// Events
-    pub fn push_event(&mut self, event: WhalyticsEvent) {
-        self.events.push(event);
-    }
-
     /// Take all events from this session
     pub fn take_events(&mut self, max_count: usize) -> Vec<WhalyticsEvent> {
-        let mut events = Vec::with_capacity(max_count);
-        for _ in 0..max_count {
-            if let Some(event) = self.events.pop() {
-                events.push(event);
-            } else {
-                break;
-            }
-        }
-        events
+        let count = std::cmp::min(self.events.len(), max_count);
+        self.events.drain(0..count).collect()
     }
 }
 
@@ -275,8 +293,12 @@ mod tests {
     
     #[test]
     fn test_session_event_creation() {
-        let session = WhalyticsSession::new("user123", "session456");
-        let event = session.event("test_event").build().unwrap();
+        let mut session = WhalyticsSession::new("user123", "session456");
+        session.push_event("test_event", HashMap::new());
+        
+        let events = session.take_events(1);
+        assert_eq!(events.len(), 1);
+        let event = &events[0];
         
         assert_eq!(event.event, "test_event");
         assert_eq!(event.user_id, "user123");
@@ -292,9 +314,40 @@ mod tests {
         assert_eq!(session.user_properties().len(), 2);
         
         // Events created after setting properties should include them
-        let event = session.event("test_event").build().unwrap();
+        session.push_event("test_event", HashMap::new());
+        
+        let events = session.take_events(1);
+        let event = &events[0];
+        
         assert_eq!(event.user_properties.len(), 2);
         assert_eq!(event.user_properties.get("platform").unwrap(), "rust");
+    }
+
+    #[test]
+    fn test_session_defaults() {
+        let session = WhalyticsSession::default();
+        assert!(!session.user_id().is_empty());
+        assert!(!session.session_id().is_empty());
+        // Simple check to see if it looks like a UUID (36 chars)
+        assert_eq!(session.user_id().len(), 36);
+        assert_eq!(session.session_id().len(), 36);
+    }
+
+    #[test]
+    fn test_session_id_precedence() {
+        let mut session = WhalyticsSession::new("default_user", "default_session");
+        
+        let mut props = HashMap::new();
+        props.insert("user_id".to_string(), serde_json::json!("custom_user"));
+        props.insert("session_id".to_string(), serde_json::json!("custom_session"));
+        
+        session.push_event("test_event", props);
+        
+        let events = session.take_events(1);
+        let event = &events[0];
+        
+        assert_eq!(event.user_id, "custom_user");
+        assert_eq!(event.session_id, "custom_session");
     }
 }
 

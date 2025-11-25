@@ -20,6 +20,7 @@ fn main() {
     
     // Example 2: Using WhalyticsSession (recommended way)
     println!("2. Creating a session and logging events...");
+    // New: Defaults to random UUIDs if not specified, but here we specify them
     let mut session = WhalyticsSession::new("rust_user_123", "rust_session_456");
     
     // Set user properties for the session
@@ -27,9 +28,8 @@ fn main() {
     session.set_user_property("subscription_type", json!("premium"));
     session.set_user_property("level", json!(10));
     
-    // Create events from the session - user_id, session_id, and user_properties are automatically included
-    let event2 = session.event("level_started").build().unwrap();
-    client.log_event(event2);
+    // Create events in the session
+    session.push_event("level_started", HashMap::new());
     
     // Example 3: Event with additional event properties
     println!("3. Logging an event with event properties...");
@@ -38,11 +38,7 @@ fn main() {
     event_props.insert("score".to_string(), json!(1500));
     event_props.insert("difficulty".to_string(), json!("hard"));
     
-    let event3 = session.event("level_completed")
-        .event_properties(event_props)
-        .build()
-        .unwrap();
-    client.log_event(event3);
+    session.push_event("level_completed", event_props);
     
     // Example 4: Purchase event
     println!("4. Logging a purchase event...");
@@ -51,11 +47,14 @@ fn main() {
     purchase_props.insert("price".to_string(), json!(9.99));
     purchase_props.insert("currency".to_string(), json!("USD"));
     
-    let event4 = session.event("purchase")
-        .event_properties(purchase_props)
-        .build()
-        .unwrap();
-    client.log_event(event4);
+    session.push_event("purchase", purchase_props);
+    
+    // Move events from session to client
+    println!("Moving events from session to client...");
+    let session_events = session.take_events(100); // Take up to 100 events
+    for event in session_events {
+        client.log_event(event);
+    }
     
     // Check pending events
     println!("\nPending events: {}", client.pending_events_count());
