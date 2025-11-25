@@ -22,22 +22,23 @@ whalytics-sdk = { git = "https://github.com/whaleboxstudio/whalytics-rust-sdk.gi
 ## Quick Start
 
 ```rust
-use whalytics_sdk::{WhalyticsClient, WhalyticsEventBuilder};
+use whalytics_sdk::{WhalyticsClient, WhalyticsSession};
 use std::collections::HashMap;
 
 fn main() {
     // Initialize the client with your API key
     let mut client = WhalyticsClient::new("YOUR_API_KEY");
     
-    // Create and log an event
-    let event = WhalyticsEventBuilder::default()
-        .event("level_completed")
-        .user_id("user_123")
-        .session_id("session_456")
-        .build()
-        .unwrap();
+    // Create a session (automatically generates UUIDs for user_id and session_id)
+    let mut session = WhalyticsSession::default();
     
-    client.log_event(event);
+    // Log an event
+    session.push_event("level_completed", HashMap::new());
+    
+    // Move events from session to client
+    for event in session.take_events(100) {
+        client.log_event(event);
+    }
     
     // Send all buffered events
     match client.flush() {
@@ -49,7 +50,36 @@ fn main() {
 
 ## Usage Examples
 
-### Basic Event
+### Using Sessions (Recommended)
+
+`WhalyticsSession` helps manage user_id, session_id, and user properties automatically.
+
+```rust
+use whalytics_sdk::WhalyticsSession;
+use serde_json::json;
+use std::collections::HashMap;
+
+// Create session with specific IDs
+let mut session = WhalyticsSession::new("user_123", "session_456");
+
+// Set user properties (added to all events)
+session.set_user_property("platform", json!("rust"));
+session.set_user_property("subscription", json!("premium"));
+
+// Log events (stored internally)
+session.push_event("app_start", HashMap::new());
+
+let mut props = HashMap::new();
+props.insert("level", json!(5));
+session.push_event("level_start", props);
+
+// Retrieve events to send
+let events = session.take_events(10);
+```
+
+### Manual Event Creation
+
+You can still create events manually if you prefer:
 
 ```rust
 let event = WhalyticsEventBuilder::default()
@@ -62,7 +92,7 @@ let event = WhalyticsEventBuilder::default()
 client.log_event(event);
 ```
 
-### Event with Properties
+### Event with Properties (Manual)
 
 ```rust
 use serde_json::json;
@@ -77,26 +107,6 @@ let event = WhalyticsEventBuilder::default()
     .user_id("user_123")
     .session_id("session_456")
     .event_properties(event_props)
-    .build()
-    .unwrap();
-
-client.log_event(event);
-```
-
-### User Properties
-
-```rust
-use serde_json::json;
-
-let mut user_props = HashMap::new();
-user_props.insert("subscription_type".to_string(), json!("premium"));
-user_props.insert("level".to_string(), json!(10));
-
-let event = WhalyticsEventBuilder::default()
-    .event("session_start")
-    .user_id("user_123")
-    .session_id("session_456")
-    .user_properties(user_props)
     .build()
     .unwrap();
 
