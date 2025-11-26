@@ -68,20 +68,40 @@ pub struct GameEventsIOSession {
 
 impl Default for GameEventsIOSession {
     fn default() -> Self {
-        GameEventsIOSessionBuilder::default()
+        let mut session = GameEventsIOSessionBuilder::default()
             .build()
-            .expect("Failed to create default GameEventsIOSession")
+            .expect("Failed to create default GameEventsIOSession");
+
+        // Auto-send new_session event
+        let mut props = HashMap::new();
+        props.insert(
+            "session_id".to_string(),
+            serde_json::json!(session.session_id.clone()),
+        );
+        session.push_event("new_session", props);
+
+        session
     }
 }
 
 impl GameEventsIOSession {
     /// Create a new session with user_id and session_id
     pub fn new(user_id: impl Into<String>, session_id: impl Into<String>) -> Self {
-        GameEventsIOSessionBuilder::default()
+        let mut session = GameEventsIOSessionBuilder::default()
             .user_id(user_id)
             .session_id(session_id)
             .build()
-            .expect("Failed to create GameEventsIOSession")
+            .expect("Failed to create GameEventsIOSession");
+
+        // Auto-send new_session event
+        let mut props = HashMap::new();
+        props.insert(
+            "session_id".to_string(),
+            serde_json::json!(session.session_id.clone()),
+        );
+        session.push_event("new_session", props);
+
+        session
     }
 
     /// Add an event to the session
@@ -305,9 +325,12 @@ mod tests {
         let mut session = GameEventsIOSession::new("user123", "session456");
         session.push_event("test_event", HashMap::new());
 
-        let events = session.take_events(1);
-        assert_eq!(events.len(), 1);
-        let event = &events[0];
+        // We expect 2 events now: new_session + test_event
+        let events = session.take_events(2);
+        assert_eq!(events.len(), 2);
+        
+        // Check the second event (the one we added)
+        let event = &events[1];
 
         assert_eq!(event.event, "test_event");
         assert_eq!(event.user_id, "user123");
@@ -325,8 +348,9 @@ mod tests {
         // Events created after setting properties should include them
         session.push_event("test_event", HashMap::new());
 
-        let events = session.take_events(1);
-        let event = &events[0];
+        // We expect 2 events: new_session (no props) + test_event (with props)
+        let events = session.take_events(2);
+        let event = &events[1];
 
         assert_eq!(event.user_properties.len(), 2);
         assert_eq!(event.user_properties.get("platform").unwrap(), "rust");
@@ -340,6 +364,10 @@ mod tests {
         // Simple check to see if it looks like a UUID (36 chars)
         assert_eq!(session.user_id().len(), 36);
         assert_eq!(session.session_id().len(), 36);
+        
+        // Should have 1 event automatically
+        assert_eq!(session.events.len(), 1);
+        assert_eq!(session.events[0].event, "new_session");
     }
 
     #[test]
@@ -355,10 +383,24 @@ mod tests {
 
         session.push_event("test_event", props);
 
-        let events = session.take_events(1);
-        let event = &events[0];
+        // We expect 2 events: new_session + test_event
+        let events = session.take_events(2);
+        let event = &events[1];
 
         assert_eq!(event.user_id, "custom_user");
         assert_eq!(event.session_id, "custom_session");
+    }
+
+    #[test]
+    fn test_new_session_event_auto_added() {
+        let session = GameEventsIOSession::new("user123", "session456");
+        
+        // Should have 1 event automatically
+        assert_eq!(session.events.len(), 1);
+        
+        let event = &session.events[0];
+        assert_eq!(event.event, "new_session");
+        assert_eq!(event.session_id, "session456");
+        assert_eq!(event.event_properties.get("session_id").unwrap(), "session456");
     }
 }
