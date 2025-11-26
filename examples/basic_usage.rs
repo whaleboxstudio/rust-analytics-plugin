@@ -1,12 +1,12 @@
 use serde_json::json;
 use std::collections::HashMap;
-use whalytics_sdk::{WhalyticsClient, WhalyticsEventBuilder, WhalyticsSession};
+use game_events_sdk::{WhalyticsClient, WhalyticsEventBuilder, WhalyticsSession};
 
 fn main() {
     // Initialize the client
     let mut client = WhalyticsClient::new("YOUR_API_KEY_HERE");
 
-    println!("Whalytics Rust SDK Example\n");
+    println!("game-events.io Rust SDK Example\n");
 
     // Example 1: Simple event (old way)
     println!("1. Logging a simple event (without session)...");

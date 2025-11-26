@@ -1,6 +1,6 @@
-# Whalytics Rust SDK
+# game-events.io Rust SDK
 
-A simple and efficient Rust SDK for Whalytics analytics.
+A simple and efficient Rust SDK for game-events.io analytics.
 
 ## Features
 
@@ -16,13 +16,13 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-whalytics-sdk = { git = "https://github.com/whaleboxstudio/whalytics-rust-sdk.git" }
+game-events-sdk = { git = "https://github.com/game-events-io/rust-sdk.git" }
 ```
 
 ## Quick Start
 
 ```rust
-use whalytics_sdk::{WhalyticsClient, WhalyticsSession};
+use game_events_sdk::{WhalyticsClient, WhalyticsSession};
 use std::collections::HashMap;
 
 fn main() {
@@ -55,7 +55,7 @@ fn main() {
 `WhalyticsSession` helps manage user_id, session_id, and user properties automatically.
 
 ```rust
-use whalytics_sdk::WhalyticsSession;
+use game_events_sdk::WhalyticsSession;
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -128,11 +128,11 @@ while client.pending_events_count() > 0 {
 ### Custom Backend URL
 
 ```rust
-use whalytics_sdk::WhalyticsClientBuilder;
+use game_events_sdk::WhalyticsClientBuilder;
 
 let client = WhalyticsClientBuilder::default()
     .api_key("YOUR_API_KEY")
-    .backend_url("https://your-custom-backend.com/v1/events")
+    .backend_url("https://api.game-events.io/v1/events") // Updated to new domain
     .build()
     .unwrap();
 ```

@@ -1,5 +1,5 @@
 [package]
-name = "whalytics-sdk"
+name = "game-events-sdk"
 version = "0.1.0"
 authors = ["Maksim Ustichenko <nix.n0uk@gmail.com>"]
 edition = "2021"

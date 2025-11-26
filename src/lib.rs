@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Event structure for Whalytics
+/// Event structure for game-events.io
 #[derive(Serialize, Deserialize, Clone, Debug, Builder, Default)]
 #[builder(setter(into))]
 #[builder(default)]
@@ -150,15 +150,15 @@ impl WhalyticsSession {
     }
 }
 
-/// Whalytics SDK client
+/// game-events.io SDK client
 #[derive(Debug, Clone, Builder)]
 #[builder(setter(into))]
 pub struct WhalyticsClient {
     /// API key for authentication
     api_key: String,
 
-    /// Backend URL (default: https://analytics.whaleboxstudio.com/v1/events)
-    #[builder(default = "\"https://analytics.whaleboxstudio.com/v1/events\".to_string()")]
+    /// Backend URL (default: https://api.game-events.io/v1/events)
+    #[builder(default = "\"https://api.game-events.io/v1/events\".to_string()")]
     backend_url: String,
 
     /// HTTP client for making requests
